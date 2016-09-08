@@ -1,0 +1,261 @@
+No.     Time           Source                Destination           Protocol Length Info
+      1 0.000000       130.236.124.143       239.255.255.250       SSDP     216    M-SEARCH * HTTP/1.1 
+
+Frame 1: 216 bytes on wire (1728 bits), 216 bytes captured (1728 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: IPv4mcast_7f:ff:fa (01:00:5e:7f:ff:fa)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 239.255.255.250
+User Datagram Protocol, Src Port: 58890 (58890), Dst Port: 1900 (1900)
+Hypertext Transfer Protocol
+    M-SEARCH * HTTP/1.1\r\n
+    HOST: 239.255.255.250:1900\r\n
+    MAN: "ssdp:discover"\r\n
+    MX: 1\r\n
+    ST: urn:dial-multiscreen-org:service:dial:1\r\n
+    USER-AGENT: Google Chrome/52.0.2743.116 Windows\r\n
+    \r\n
+    [Full request URI: http://239.255.255.250:1900*]
+    [HTTP request 1/4]
+    [Next request in frame: 2]
+
+No.     Time           Source                Destination           Protocol Length Info
+      2 1.001111       130.236.124.143       239.255.255.250       SSDP     216    M-SEARCH * HTTP/1.1 
+
+Frame 2: 216 bytes on wire (1728 bits), 216 bytes captured (1728 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: IPv4mcast_7f:ff:fa (01:00:5e:7f:ff:fa)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 239.255.255.250
+User Datagram Protocol, Src Port: 58890 (58890), Dst Port: 1900 (1900)
+Hypertext Transfer Protocol
+    M-SEARCH * HTTP/1.1\r\n
+    HOST: 239.255.255.250:1900\r\n
+    MAN: "ssdp:discover"\r\n
+    MX: 1\r\n
+    ST: urn:dial-multiscreen-org:service:dial:1\r\n
+    USER-AGENT: Google Chrome/52.0.2743.116 Windows\r\n
+    \r\n
+    [Full request URI: http://239.255.255.250:1900*]
+    [HTTP request 2/4]
+    [Prev request in frame: 1]
+    [Next request in frame: 5]
+
+No.     Time           Source                Destination           Protocol Length Info
+      5 2.002058       130.236.124.143       239.255.255.250       SSDP     216    M-SEARCH * HTTP/1.1 
+
+Frame 5: 216 bytes on wire (1728 bits), 216 bytes captured (1728 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: IPv4mcast_7f:ff:fa (01:00:5e:7f:ff:fa)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 239.255.255.250
+User Datagram Protocol, Src Port: 58890 (58890), Dst Port: 1900 (1900)
+Hypertext Transfer Protocol
+    M-SEARCH * HTTP/1.1\r\n
+    HOST: 239.255.255.250:1900\r\n
+    MAN: "ssdp:discover"\r\n
+    MX: 1\r\n
+    ST: urn:dial-multiscreen-org:service:dial:1\r\n
+    USER-AGENT: Google Chrome/52.0.2743.116 Windows\r\n
+    \r\n
+    [Full request URI: http://239.255.255.250:1900*]
+    [HTTP request 3/4]
+    [Prev request in frame: 2]
+    [Next request in frame: 6]
+
+No.     Time           Source                Destination           Protocol Length Info
+      6 3.003487       130.236.124.143       239.255.255.250       SSDP     216    M-SEARCH * HTTP/1.1 
+
+Frame 6: 216 bytes on wire (1728 bits), 216 bytes captured (1728 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: IPv4mcast_7f:ff:fa (01:00:5e:7f:ff:fa)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 239.255.255.250
+User Datagram Protocol, Src Port: 58890 (58890), Dst Port: 1900 (1900)
+Hypertext Transfer Protocol
+    M-SEARCH * HTTP/1.1\r\n
+    HOST: 239.255.255.250:1900\r\n
+    MAN: "ssdp:discover"\r\n
+    MX: 1\r\n
+    ST: urn:dial-multiscreen-org:service:dial:1\r\n
+    USER-AGENT: Google Chrome/52.0.2743.116 Windows\r\n
+    \r\n
+    [Full request URI: http://239.255.255.250:1900*]
+    [HTTP request 4/4]
+    [Prev request in frame: 5]
+
+No.     Time           Source                Destination           Protocol Length Info
+     22 8.464007       130.236.124.143       128.119.245.12        HTTP     491    GET /wireshark-labs/HTTP-wireshark-file4.html HTTP/1.1 
+
+Frame 22: 491 bytes on wire (3928 bits), 491 bytes captured (3928 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 128.119.245.12
+Transmission Control Protocol, Src Port: 57999 (57999), Dst Port: 80 (80), Seq: 1, Ack: 1, Len: 437
+Hypertext Transfer Protocol
+    GET /wireshark-labs/HTTP-wireshark-file4.html HTTP/1.1\r\n
+    Host: gaia.cs.umass.edu\r\n
+    Connection: keep-alive\r\n
+    Upgrade-Insecure-Requests: 1\r\n
+    User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36\r\n
+    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n
+    Accept-Encoding: gzip, deflate, sdch\r\n
+    Accept-Language: sv-SE,sv;q=0.8,en-US;q=0.6,en;q=0.4\r\n
+    \r\n
+    [Full request URI: http://gaia.cs.umass.edu/wireshark-labs/HTTP-wireshark-file4.html]
+    [HTTP request 1/2]
+    [Response in frame: 24]
+    [Next request in frame: 25]
+
+No.     Time           Source                Destination           Protocol Length Info
+     24 8.588699       128.119.245.12        130.236.124.143       HTTP     1129   HTTP/1.1 200 OK  (text/html)
+
+Frame 24: 1129 bytes on wire (9032 bits), 1129 bytes captured (9032 bits) on interface 0
+Ethernet II, Src: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00), Dst: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe)
+Internet Protocol Version 4, Src: 128.119.245.12, Dst: 130.236.124.143
+Transmission Control Protocol, Src Port: 80 (80), Dst Port: 57999 (57999), Seq: 1, Ack: 438, Len: 1075
+Hypertext Transfer Protocol
+    HTTP/1.1 200 OK\r\n
+    Date: Thu, 01 Sep 2016 16:01:00 GMT\r\n
+    Server: Apache/2.4.6 (CentOS) OpenSSL/1.0.1e-fips PHP/5.4.16 mod_perl/2.0.9dev Perl/v5.16.3\r\n
+    Last-Modified: Thu, 01 Sep 2016 05:59:01 GMT\r\n
+    ETag: "2ca-53b6be9166fe6"\r\n
+    Accept-Ranges: bytes\r\n
+    Content-Length: 714\r\n
+    Keep-Alive: timeout=5, max=100\r\n
+    Connection: Keep-Alive\r\n
+    Content-Type: text/html; charset=UTF-8\r\n
+    \r\n
+    [HTTP response 1/2]
+    [Time since request: 0.124692000 seconds]
+    [Request in frame: 22]
+    [Next request in frame: 25]
+    [Next response in frame: 31]
+Line-based text data: text/html
+
+No.     Time           Source                Destination           Protocol Length Info
+     25 8.606657       130.236.124.143       128.119.245.12        HTTP     462    GET /pearson.png HTTP/1.1 
+
+Frame 25: 462 bytes on wire (3696 bits), 462 bytes captured (3696 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 128.119.245.12
+Transmission Control Protocol, Src Port: 57999 (57999), Dst Port: 80 (80), Seq: 438, Ack: 1076, Len: 408
+Hypertext Transfer Protocol
+    GET /pearson.png HTTP/1.1\r\n
+    Host: gaia.cs.umass.edu\r\n
+    Connection: keep-alive\r\n
+    User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36\r\n
+    Accept: image/webp,image/*,*/*;q=0.8\r\n
+    Referer: http://gaia.cs.umass.edu/wireshark-labs/HTTP-wireshark-file4.html\r\n
+    Accept-Encoding: gzip, deflate, sdch\r\n
+    Accept-Language: sv-SE,sv;q=0.8,en-US;q=0.6,en;q=0.4\r\n
+    \r\n
+    [Full request URI: http://gaia.cs.umass.edu/pearson.png]
+    [HTTP request 2/2]
+    [Prev request in frame: 22]
+    [Response in frame: 31]
+
+No.     Time           Source                Destination           Protocol Length Info
+     31 8.731273       128.119.245.12        130.236.124.143       HTTP     747    HTTP/1.1 200 OK  (PNG)
+
+Frame 31: 747 bytes on wire (5976 bits), 747 bytes captured (5976 bits) on interface 0
+Ethernet II, Src: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00), Dst: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe)
+Internet Protocol Version 4, Src: 128.119.245.12, Dst: 130.236.124.143
+Transmission Control Protocol, Src Port: 80 (80), Dst Port: 57999 (57999), Seq: 3996, Ack: 846, Len: 693
+[3 Reassembled TCP Segments (3613 bytes): #29(1460), #30(1460), #31(693)]
+Hypertext Transfer Protocol
+    HTTP/1.1 200 OK\r\n
+    Date: Thu, 01 Sep 2016 16:01:00 GMT\r\n
+    Server: Apache/2.4.6 (CentOS) OpenSSL/1.0.1e-fips PHP/5.4.16 mod_perl/2.0.9dev Perl/v5.16.3\r\n
+    Last-Modified: Sat, 06 Aug 2016 10:08:14 GMT\r\n
+    ETag: "cc3-539645c7f1ee7"\r\n
+    Accept-Ranges: bytes\r\n
+    Content-Length: 3267\r\n
+    Keep-Alive: timeout=5, max=99\r\n
+    Connection: Keep-Alive\r\n
+    Content-Type: image/png\r\n
+    \r\n
+    [HTTP response 2/2]
+    [Time since request: 0.124616000 seconds]
+    [Prev request in frame: 22]
+    [Prev response in frame: 24]
+    [Request in frame: 25]
+Portable Network Graphics
+
+No.     Time           Source                Destination           Protocol Length Info
+     35 8.737103       130.236.124.143       128.119.240.90        HTTP     476    GET /~kurose/cover_5th_ed.jpg HTTP/1.1 
+
+Frame 35: 476 bytes on wire (3808 bits), 476 bytes captured (3808 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 128.119.240.90
+Transmission Control Protocol, Src Port: 58000 (58000), Dst Port: 80 (80), Seq: 1, Ack: 1, Len: 422
+Hypertext Transfer Protocol
+    GET /~kurose/cover_5th_ed.jpg HTTP/1.1\r\n
+    Host: manic.cs.umass.edu\r\n
+    Connection: keep-alive\r\n
+    User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36\r\n
+    Accept: image/webp,image/*,*/*;q=0.8\r\n
+    Referer: http://gaia.cs.umass.edu/wireshark-labs/HTTP-wireshark-file4.html\r\n
+    Accept-Encoding: gzip, deflate, sdch\r\n
+    Accept-Language: sv-SE,sv;q=0.8,en-US;q=0.6,en;q=0.4\r\n
+    \r\n
+    [Full request URI: http://manic.cs.umass.edu/~kurose/cover_5th_ed.jpg]
+    [HTTP request 1/1]
+    [Response in frame: 37]
+
+No.     Time           Source                Destination           Protocol Length Info
+     37 8.865509       128.119.240.90        130.236.124.143       HTTP     510    HTTP/1.1 302 Found  (text/html)
+
+Frame 37: 510 bytes on wire (4080 bits), 510 bytes captured (4080 bits) on interface 0
+Ethernet II, Src: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00), Dst: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe)
+Internet Protocol Version 4, Src: 128.119.240.90, Dst: 130.236.124.143
+Transmission Control Protocol, Src Port: 80 (80), Dst Port: 58000 (58000), Seq: 1, Ack: 423, Len: 456
+Hypertext Transfer Protocol
+    HTTP/1.1 302 Found\r\n
+    Date: Thu, 01 Sep 2016 16:00:52 GMT\r\n
+    Server: Apache\r\n
+    Location: http://caite.cs.umass.edu/~kurose/cover_5th_ed.jpg\r\n
+    Content-Length: 234\r\n
+    Connection: close\r\n
+    Content-Type: text/html; charset=iso-8859-1\r\n
+    \r\n
+    [HTTP response 1/1]
+    [Time since request: 0.128406000 seconds]
+    [Request in frame: 35]
+Line-based text data: text/html
+
+No.     Time           Source                Destination           Protocol Length Info
+     47 8.995077       130.236.124.143       128.119.240.90        HTTP     476    GET /~kurose/cover_5th_ed.jpg HTTP/1.1 
+
+Frame 47: 476 bytes on wire (3808 bits), 476 bytes captured (3808 bits) on interface 0
+Ethernet II, Src: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe), Dst: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00)
+Internet Protocol Version 4, Src: 130.236.124.143, Dst: 128.119.240.90
+Transmission Control Protocol, Src Port: 58001 (58001), Dst Port: 80 (80), Seq: 1, Ack: 1, Len: 422
+Hypertext Transfer Protocol
+    GET /~kurose/cover_5th_ed.jpg HTTP/1.1\r\n
+    Host: caite.cs.umass.edu\r\n
+    Connection: keep-alive\r\n
+    User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36\r\n
+    Accept: image/webp,image/*,*/*;q=0.8\r\n
+    Referer: http://gaia.cs.umass.edu/wireshark-labs/HTTP-wireshark-file4.html\r\n
+    Accept-Encoding: gzip, deflate, sdch\r\n
+    Accept-Language: sv-SE,sv;q=0.8,en-US;q=0.6,en;q=0.4\r\n
+    \r\n
+    [Full request URI: http://caite.cs.umass.edu/~kurose/cover_5th_ed.jpg]
+    [HTTP request 1/1]
+    [Response in frame: 126]
+
+No.     Time           Source                Destination           Protocol Length Info
+    126 9.743884       128.119.240.90        130.236.124.143       HTTP     526    HTTP/1.1 200 OK  (JPEG JFIF image)
+
+Frame 126: 526 bytes on wire (4208 bits), 526 bytes captured (4208 bits) on interface 0
+Ethernet II, Src: CiscoInc_a1:a2:00 (10:f3:11:a1:a2:00), Dst: IntelCor_e1:b0:fe (fc:f8:ae:e1:b0:fe)
+Internet Protocol Version 4, Src: 128.119.240.90, Dst: 130.236.124.143
+Transmission Control Protocol, Src Port: 80 (80), Dst Port: 58001 (58001), Seq: 100741, Ack: 423, Len: 472
+[70 Reassembled TCP Segments (101212 bytes): #49(1460), #50(1460), #51(1460), #52(1460), #53(1460), #54(1460), #55(1460), #56(1460), #57(1460), #58(1460), #60(1460), #61(1460), #62(1460), #63(1460), #64(1460), #65(1460), #66(1460), #67(1460]
+Hypertext Transfer Protocol
+    HTTP/1.1 200 OK\r\n
+    Date: Thu, 01 Sep 2016 16:00:52 GMT\r\n
+    Server: Apache\r\n
+    Last-Modified: Tue, 15 Sep 2009 18:23:27 GMT\r\n
+    ETag: "78004-18a68-473a1e0e6e5c0"\r\n
+    Accept-Ranges: bytes\r\n
+    Content-Length: 100968\r\n
+    Connection: close\r\n
+    Content-Type: image/jpeg\r\n
+    \r\n
+    [HTTP response 1/1]
+    [Time since request: 0.748807000 seconds]
+    [Request in frame: 47]
+JPEG File Interchange Format
