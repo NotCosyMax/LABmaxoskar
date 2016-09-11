@@ -40,6 +40,7 @@ Requirement specifications:
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <signal.h>
+#include <regex.h>
 
 // Default port if none is given by the users
 #define DEFAULTPORT "3123"
@@ -47,7 +48,7 @@ Requirement specifications:
 
 #define SERVBACKLOG 10
 
-#define MAXBUFLEN 3000
+#define MAXBUFLEN 900000
 
 #define DEBUG
 
@@ -77,6 +78,8 @@ void *get_in_addr(struct sockaddr *sa)
 void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN]);
 
 int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN]);
+
+int getLineFromBuffer(char line[], char buf[], int maxsize);
 
 int main(int argc)
 {
@@ -218,66 +221,175 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
 
 	//Destination filedescriptor
 	int 	destFd;
+
 	char 	destClient[INET6_ADDRSTRLEN];
+	//Destination URL
+	char    dest[128];
 
 	//Message buffer
-	char buf[MAXBUFLEN];
+	char recBuf[MAXBUFLEN];
+	char sendBuf[MAXBUFLEN];
 	int  recLen;
+	int  sendLen;
+
+	//Reg. Exp. for detecting "bad" URLand "Host", "Connection" and "Length" lines
+	regex_t regURL, regHost, regCon, regLen;
+	int retv;
+	if((retv = regcomp(&regURL, "Host. .*(norrkoping|Spongebob)", 0)))
+	{
+		printf("Reg exp comp. fail\n");
+	}
+	if((retv = regcomp(&regHost, "Host. ", 0)))
+	{
+		printf("Reg exp comp. fail\n");
+	}
+	if((retv = regcomp(&regCon, "Connection. ", 0)))
+	{
+		printf("Reg exp comp. fail\n");
+	}
+	if((retv = regcomp(&regLen, "(Length.) ", 0)))
+	{
+		printf("Reg exp comp. fail\n");
+	}
+
 
 	//Incomming client main loop
 	//TODO: End when final respons is sent (think keep-alive);
 	while(1)
 	{
 
-		memset(buf,0 , MAXBUFLEN);
+		memset(recBuf,0 , MAXBUFLEN);
 		//Read out from socket
-		if((recLen = recv(incClientFd, buf, MAXBUFLEN-1, 0)) == -1)
+		if((recLen = recv(incClientFd, recBuf, MAXBUFLEN-1, 0)) == -1)
 		{
 			perror("server side: Error receiving from socket");
 			//Exit?
 		}
 
 #ifdef DEBUG
-		buf[MAXBUFLEN] = '\0';
-		printf("server side:\n%s received:\n'%s'\n",incClient,buf);
+		recBuf[MAXBUFLEN] = '\0';
+		printf("server side:\n%s received before mod:\n'%s'\n",incClient,recBuf);
 #endif
-
-		//Extract destination information
-		//TODO: Make not hard coded
-
-
-		//Do some filtering here, but for now we dont care about this
-
-
-		//Open socket to the destination
-		destFd = dest_connect("http://liu.se/", destClient);
-
-        printf("got desc\n");
-		if(destFd != -1)
+		//Check if URL is ok
+		int match = 1;//regexec(&regURL, recBuf, 0, NULL, 0);
+		if(!match)
 		{
-		    //Write request to destination
-			int sentSize = 0;
-			while(sentSize < recLen)
+			//Redirect to "safe" site
+			printf("Bad site!\n");
+		}
+		else
+		{
+			//Move recBuf to sendBuf line by line to catch "Host", "Connection", and "Length"
+			//lines in order to manipulate the header
+			sendLen = 0;
+			int lineLen;
+			int i;
+			char line[MAXBUFLEN];
+            int matchLine;
+            char mod;
+			while(recLen > 0)
 			{
-				if((sentSize += send(destFd, buf, recLen, 0)) == -1)
+                memset(line,0,MAXBUFLEN);
+				//Read line
+				lineLen = getLineFromBuffer(line,recBuf,recLen);
+				recLen -= lineLen;
+
+				if((matchLine = regexec(&regHost, line, 0, NULL, 0)) == 0)
 				{
-					perror("client side: Error sending to destination");
+					//Extract host URL/destination
+                    memcpy(dest,&line[6],lineLen-8);
+                    dest[lineLen-7] = '\0';
+
+
+
+					//Write to sendBuf
+					memcpy(&sendBuf[sendLen],line,lineLen);
+					sendLen += lineLen;
+					printf("found host %s\n",dest);
 				}
-			}
+				else if((matchLine = regexec(&regCon, line, 0, NULL, 0)) == 0)
+				{
+					//Change to connection type "close" if it is "keep-alive"
+					memcpy(&sendBuf[sendLen],"Connection: close\r\n",19);
+					sendLen += 19;
+					printf("found connection\n");
+				}
+                else
+				{
+					//Nothing special, just copy line to sendBuf
+					memcpy(&sendBuf[sendLen],line,lineLen);
+					sendLen += lineLen;
+				}
 
-            printf("wrote to dest\n");
-			memset(buf,0,MAXBUFLEN);
-            //Wait for respons
-			if((recLen = recv(destFd, buf, MAXBUFLEN-1, 0)) == -1)
+
+
+			}
+#ifdef DEBUG
+			sendBuf[MAXBUFLEN] = '\0';
+			printf("server side:\n%s received after mod:\n'%s'\n",incClient,sendBuf);
+#endif
+			//Open socket to the destination
+			destFd = dest_connect(dest, destClient);
+
+
+			if(destFd != -1)
 			{
-				perror("client side: Error receiving from socket");
-				//Exit?
-			}
+                int sentLend;
+				//Write request to destination
+				while(sentLend < sendLen)
+				{
+					if((sentLend += send(destFd, sendBuf, sendLen, 0)) == -1)
+					{
+						perror("client side: Error sending to destination");
+					}
+				}
 
-			buf[MAXBUFLEN] = '\0';
-			printf("client side:\n%s received:\n'%s'\n",destClient,buf);
+
+					memset(recBuf,0,MAXBUFLEN);
+					recLen = 0;
+                    int recT = 0;
+                    char test[MAXBUFLEN];
+                    memset(test,0,MAXBUFLEN);
+					do
+					{
+
+                        //Wait for respons
+                        if((recT = recv(destFd, recBuf, MAXBUFLEN-1, 0)) == -1)
+                        {
+                            perror("client side: Error receiving from socket");
+                            //Exit?
+                        }
+                        memcpy(&test[recLen],recBuf,recT);
+                        recLen += recT;
+
+                    }
+                    while(recT != 0);
+
+
+	#ifdef DEBUG
+					recBuf[MAXBUFLEN] = '\0';
+					test[MAXBUFLEN] = '\0';
+					printf("client side: %s received:\n'%s'\n",destClient,test);
+	#endif
+
+					//Filter respons:
+					// * Check content type.
+					// * If text, look foor keywords
+					// * If found, redirect to "safe site"
+
+					//Code here
+
+					sentLend = 0;
+					//Write respons back to client
+					while(sentLend < recLen)
+					{
+						sentLend += send(incClientFd, test, recLen, 0);
+					}
+
+			}
 
 		}
+
 	}
 
 }
@@ -294,7 +406,7 @@ int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN])
 
 		//Try retrive address information
 	int resp;
-	if((resp = getaddrinfo("130.236.5.66", HTTPPORT, &hints, &pServInfo))!= 0)
+	if((resp = getaddrinfo(dest, HTTPPORT, &hints, &pServInfo))!= 0)
 	{
 #ifdef DEBUG
 		//Error while tyring to retrieve address information, print error and end the program with status 1
@@ -344,4 +456,33 @@ int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN])
 
 	//Return descriptor to handler
 	return destFd;
+}
+
+int offset = 0;
+
+int getLineFromBuffer(char line[], char buf[], int maxsize)
+{
+
+	int i;
+	char end = 0;
+
+    memset(line,0,MAXBUFLEN);
+
+	for(i = 0; i < maxsize; i++)
+	{
+
+		line[i] = buf[offset+i];
+
+
+		if(buf[offset+i] == '\n')
+            break;
+
+	}
+    i++;
+    offset += i;
+
+	//Shift buffer to remove extracted line
+	//memcpy(buf,&buf[i+1],maxsize-i);
+
+	return i;
 }
