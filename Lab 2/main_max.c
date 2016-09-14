@@ -52,13 +52,19 @@ Requirement specifications:
 
 #define DEBUG
 
-/*
-#define REDIRECTHEADER "HTTP/1.1 302 Found\r\nLocation: http://ida.liu.se/~TDTS04/labs/2011/ass2/error2.html\r\nConnection: keep-alive\r\n"
-*/
-
 #define REDIRECTHEADER "HTTP/1.1 302 Found\r\nDate: Thu, 01 Sep 2016 16:00:52 GMT\r\nServer: Apache\r\nLocation: http://www.ida.liu.se/~TDTS04/labs/2011/ass2/error2.html\r\nContent-Length: 317\r\nConnection: close\r\nContent-Type: text/html; charset=iso-8859-1\r\n\r\n<!DOCTYPE HTML PUBLIC '-//IETF//DTD HTML 2.0//EN'>\n<html><head>\n<title>302 A bad BAD page</title>\n</head><body>\n<h1>You tries to access a bad BAD page</h1>\n<p>For more information regarding what is a BAD site, click <a href=http://www.ida.liu.se/~TDTS04/labs/2011/ass2/error2.html>here</a>.</p>\n</body></html>\n"
 
 #define REDIRECTLEN 561
+
+#define STOPATCLOSE 0
+#define STOPATBLOCKING 1
+#define MSGLISTSIZE 254;
+
+struct msg_list {
+	char 			 	data[MSGLISTSIZE];
+	unsigned char		dataLen = 0;
+	struct msg_list* 	next = NULL;
+}
 
 //Signal handler
 void sigchld_handler(int s)
@@ -87,6 +93,10 @@ void *get_in_addr(struct sockaddr *sa)
 void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN]);
 
 int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN]);
+
+struct msg_list* receive_from_socket(int socketFd, char stopat);
+
+int check_list_content(struct msg_list* list, char* dest);
 
 int get_line_from_buffer(char line[], char buf[], int maxsize);
 
@@ -242,52 +252,24 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
     int  recLen;
     int  sendLen;
 
-    //Reg. Exp. for detecting "bad" words as well as "Host", "Connection" and "Length" lines in HTTP header
-    regex_t regUBadWord, regHost, regCon, regConMod, regLen;
-    int retv;
-    if((retv = regcomp(&regBadWord, ".* norrkoping|aftonbladet", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regHost, "^Host. ", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regCon, "Connection. [K|k]eep.[A|a]live", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regConMod, "Connection. ", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regLen, "(Length.) ", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
 
 
     //Incomming client main loop
     //TODO: End when final respons is sent (think keep-alive);
     while(1)
     {
-        //Clear rec buffer before receiving
-        memset(recBuf,0 , MAXBUFLEN);
-        //Read out from socket
-        if((recLen = recv(incClientFd, recBuf, MAXBUFLEN-1, 0)) == -1)
-        {
-            perror("server side: Error receiving from socket");
-            //Exit?
-        }
+        //Read from socket (non blocking)
+		struct msg_list* pRecList = receive_from_socket(incClientFd,STOPATBLOCKING);
 
-        //If recLen is zero, the client closed the connection, end!
-        if(recLen == 0)
-            break;
-
+		//If recLen is zero, the client closed the connection, end!
+		if(pRecLen->dataLen == 0)
+			break;
+		
 #ifdef DEBUG
-        recBuf[MAXBUFLEN] = '\0';
-        printf("server side:\n%s received before mod:\n'%s'\n",incClient,recBuf);
+        //recBuf[MAXBUFLEN] = '\0';
+        //printf("server side:\n%s received before mod:\n'%s'\n",incClient,recBuf);
 #endif
+
         //Connection type modified
         char conMod = 0;
         //Check if URL is ok
@@ -413,7 +395,24 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                 // * If found, redirect to "safe site"
                 // * Else, return Connection: keep-alive before sending the message back
                 //Code here
-
+				int match = regexec(&regType, recBuf, 0, NULL, 0);
+				if(!match)
+				{				
+					match = regexec(&regBadWord, recBuf, 0, NULL, 0);
+					if(!match)
+					{
+						//Redirect to "safe" site
+						printf("Bad site!\n");
+						memset(sendBuf,0,MAXBUFLEN);
+						memcpy(sendBuf,REDIRECTHEADER,REDIRECTLEN);
+						sendLen = REDIRECTLEN;
+						sendBuf[REDIRECTLEN] = '\0';
+						
+						//Break loop, no need to do any further processing
+						break;
+					}
+				}
+				
                 //Read line by line until we have found and changed the connection type(if we changed this earlier)
                 if(conMod == 3)
                 {
@@ -565,6 +564,105 @@ int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN])
 
     //Return descriptor to handler
     return destFd;
+}
+
+struct msg_list* receive_from_socket(int socketFd, char stopat)
+{
+	//Set flags to be non blocking (receiving from client) or blocking (receiving from destination)
+	char flags;
+	if(stopat == STOPATCLOSE)
+		flags = 0;
+	else
+		flags = MSG_DONTWAIT;
+	
+	//Allocate first list entity
+	struct msg_list* pRecList = (struct msg_list*) malloc(sizeof(struct msg_list));
+	//Point to null as next
+	pRecList->next = NULL;
+	
+	int recLen
+	char bufLen = MSGLISTSIZE;
+	do
+	{
+		//Read out at most MSGLISTSIZE from socket
+		recLen = recv(socketFd, &pRecList->data[MSGLISTSIZE-bufLen], bufLen, flags);
+		
+		//If recList returns "EAGAIN" or "EWOULDBLOCK" we stop reading (this is only true if stopat is set)
+		if(stopat && ((recLen == EAGAIN) || (recLen == EWOULDBLOCK)))
+		{
+			//Flag we could not read anything
+			pRecList->dataLen = -1;
+			break;
+		}
+		else
+		{
+			//We continue to read
+			pRecList->dataLen += recLen;
+			
+			//If we haev filled this segment, allocate a new one
+			if(recLen == MSGLISTSIZE)
+			{
+				//Allocate new list segment
+				struct msg_list* pNewSeg = (struct msg_list*) malloc(sizeof(struct msg_list));
+				//Point to next previus segment
+				pNewSeg->next = pRecList;
+				//Change pRecList header
+				pRecList = pNewSeg;
+				
+				bufLen = MSGLISTSIZE;
+			}
+			else
+			{
+				bufLen -= recLen;
+			}
+		}
+		
+		//If we are not reading in "unblocked" mode, break right away
+		if(!stopat)
+			break;
+		
+	}while(1);
+	
+	//Return pointer
+	return pRecList;
+}
+
+//Check the contents of the listand returns either a modified list, or a list containing a redirect message.
+//It also returns the destination as an argument
+//The functions return with the status (-1 = redirect, 0 = no modification, 1 = modified) 
+int check_list_content(struct msg_list* list, char* dest)
+{
+	
+    //Reg. Exp. for detecting "bad" words as well as "Host", "Connection" and "Length" lines in HTTP header
+    regex_t regUBadWord, regHost, regCon, regConMod, regType;
+    int retv;
+    if((retv = regcomp(&regBadWord, ".* norrkoping|aftonbladet", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+    if((retv = regcomp(&regHost, "^Host. ", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+    if((retv = regcomp(&regCon, "Connection. [K|k]eep.[A|a]live", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+    if((retv = regcomp(&regConMod, "Connection. ", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+    if((retv = regcomp(&regType, "Content-Type.* text.html|text.xml", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+	
+	//First we check if the list conatins a GET message or a HTTP respons
+	int match = regexec(&regBadWord, recBuf, 0, NULL, 0);
+
+	//If 
+	
+	return match;
 }
 
 int get_line_from_buffer(char line[], char buf[], int maxSize)
