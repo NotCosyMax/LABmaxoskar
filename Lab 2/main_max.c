@@ -58,7 +58,7 @@ Requirement specifications:
 
 #define STOPATCLOSE 0
 #define STOPATBLOCKING 1
-#define MSGLISTSIZE 254
+#define MSGLISTSIZE 512
 
 #define OUTGOING	0
 #define INCOMMING 	1
@@ -66,7 +66,7 @@ Requirement specifications:
 struct msg_list
 {
     char 			 	data[MSGLISTSIZE];
-    unsigned char		dataLen;
+    int		dataLen;
     struct msg_list* 	next;
 };
 
@@ -98,7 +98,7 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN]);
 
 int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN]);
 
-struct msg_list* receive_from_socket(int socketFd, char stopat);
+struct msg_list* receive_from_socket(int socketFd,struct msg_list* test, char stopat);
 
 int process_list(struct msg_list* pList, char direction, char* pMsg, char* pDest);
 
@@ -255,6 +255,7 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
     char*    pDest;
 
     struct msg_list* pRecList;
+struct msg_list* pRecList2;
 
     // Message buffer pointer
     char* 	pMsg;
@@ -264,8 +265,10 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
     // TODO: End when final respons is sent (think keep-alive);
     while(1)
     {
+
+
         // Read from socket (non blocking)
-        pRecList = receive_from_socket(incClientFd,STOPATBLOCKING);
+        pRecList2 = receive_from_socket(incClientFd,pRecList,STOPATBLOCKING);
 #ifdef DEBUG
             printf("server side: received msg\n");
 #endif
@@ -321,7 +324,7 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                 clear_list(pRecList);
 
                 // Read from socket (non blocking)
-                pRecList = receive_from_socket(destFd,STOPATCLOSE);
+                pRecList2 = receive_from_socket(destFd,pRecList,STOPATCLOSE);
 
                 // Process the list and create a char string msg
                 int status = process_list(pRecList, INCOMMING, pMsg, pDest);
@@ -441,7 +444,7 @@ int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN])
     return destFd;
 }
 
-struct msg_list* receive_from_socket(int socketFd, char stopat)
+struct msg_list* receive_from_socket(int socketFd, struct msg_list* test, char stopat)
 {
     //Set flags to be non blocking (receiving from client) or blocking (receiving from destination)
     char flags;
@@ -454,6 +457,7 @@ struct msg_list* receive_from_socket(int socketFd, char stopat)
     struct msg_list* pRecList = (struct msg_list*) malloc(sizeof(struct msg_list));
     //Point to null as next
     pRecList->next = NULL;
+    pRecList->dataLen = 0;
 
     int recLen;
     char bufLen = MSGLISTSIZE;
@@ -461,28 +465,24 @@ struct msg_list* receive_from_socket(int socketFd, char stopat)
     //Read out at most MSGLISTSIZE from socket (first call blocking as we might wait for a request)
     recLen = recv(socketFd, &pRecList->data[MSGLISTSIZE-bufLen], bufLen, 0);
 
-    printf("got first msg\n");
+    printf("got first msg %u\n",recLen);
 
     do
     {
-        //If recList returns "EAGAIN" or "EWOULDBLOCK" we stop reading (this is only true if stopat is set)
-        if((stopat == STOPATBLOCKING) && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
-        {
-            break;
-        }
-        else
-        {
-         printf("got second msg\n");
+
+
+         printf("got second msg %u\n",recLen);
             //We continue to read
             pRecList->dataLen += recLen;
 
             //If we haev filled this segment, allocate a new one
-            if(recLen == MSGLISTSIZE)
+            if(pRecList->dataLen == MSGLISTSIZE)
             {
                 //Allocate new list segment
                 struct msg_list* pNewSeg = (struct msg_list*) malloc(sizeof(struct msg_list));
                 //Point to next previus segment
                 pNewSeg->next = pRecList;
+                pNewSeg->dataLen = 0;
                 //Change pRecList header
                 pRecList = pNewSeg;
 
@@ -492,7 +492,7 @@ struct msg_list* receive_from_socket(int socketFd, char stopat)
             {
                 bufLen -= recLen;
             }
-        }
+
 
         //If we are not reading in "unblocked" mode, break right away
         if(!stopat)
@@ -501,11 +501,17 @@ struct msg_list* receive_from_socket(int socketFd, char stopat)
         //Read out at most MSGLISTSIZE from socket (non blocking)
         recLen = recv(socketFd, &pRecList->data[MSGLISTSIZE-bufLen], bufLen, flags);
 
+        //If recList returns "EAGAIN" or "EWOULDBLOCK" we stop reading (this is only true if stopat is set)
+        if((recLen == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+        {
+            break;
+        }
+
 
     }
     while(1);
 
-
+    test = pRecList;
     //Return pointer
     return pRecList;
 }
@@ -520,9 +526,14 @@ int process_list(struct msg_list* pList, char direction, char* pMsg, char* pDest
 {
 printf("3\n");
     //Reg. Exp. for detecting "bad" words as well as "Host", "Connection" and "Length" lines in HTTP header
-    regex_t regBadWord, regHost, regCon, regCont, regType;
+    regex_t regBW, regHost, regCon, regCont, regType;
     int retv;
-    if((retv = regcomp(&regBadWord, ".* norrkoping|aftonbladet", REG_ICASE|REG_EXTENDED)))
+
+    if((retv = regcomp(&regType, "Content-Type.* text.html|text.xml", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
+    if((retv = regcomp(&regBW, "norrkoping|aftonbladet", REG_ICASE|REG_EXTENDED))) //.*
     {
         printf("Reg exp comp. fail\n");
     }
@@ -538,11 +549,6 @@ printf("3\n");
     {
         printf("Reg exp comp. fail\n");
     }
-    if((retv = regcomp(&regType, "Content-Type.* text.html|text.xml", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-
 
     /*
     	First we need to get the total message length to allocate a appropriate char string.
@@ -565,7 +571,7 @@ printf("3\n");
     //The message content is considered being text until proven otherwise
     bool	textType		= true;
 
-printf("read line, %u\n",msgLen);
+printf("read line, %u\n",listLen);
     //Read out first line
     lineLen = get_line_from_list(pList, pLine);
 
@@ -589,7 +595,7 @@ printf("got line\n");
         }
 
         //Start with checking for "bad" words (only as long as we think the contents is textType)
-        if(textType && !(regexec(&regBadWord, pLine, 0, NULL, 0)))
+        if(textType && !(regexec(&regBW, pLine, 0, NULL, 0)))
         {
             //A "bad" request detected, create a redirect message and send back to the client.
             if(pMsg)
@@ -663,7 +669,7 @@ printf("read line 2\n");
 
 
     // Free regexs
-    regfree(&regBadWord);
+    regfree(&regBW);
     regfree(&regCon);
     regfree(&regCont);
     regfree(&regType);
@@ -685,8 +691,13 @@ printf("1\n");
 
     while(pList != NULL)
     {
+		printf("looop: %u\n",pList->dataLen);
+
         len += pList->dataLen;
-        pList = pList->next;
+
+        printf("doop: %u\n", len);
+        if(pList->next)
+            pList = pList->next;
     }
 printf("2\n");
     return len;
