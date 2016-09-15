@@ -46,9 +46,7 @@ Requirement specifications:
 #define DEFAULTPORT "3123"
 #define HTTPPORT    "80"
 
-#define SERVBACKLOG 10
-
-#define MAXBUFLEN 900000
+#define SERVBACKLOG 20
 
 #define DEBUG
 
@@ -58,7 +56,7 @@ Requirement specifications:
 
 #define STOPATCLOSE 0
 #define STOPATBLOCKING 1
-#define MSGLISTSIZE 250
+#define MSGLISTSIZE 2000
 
 #define OUTGOING	0
 #define INCOMMING 	1
@@ -98,15 +96,13 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN]);
 
 int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN]);
 
-struct msg_list* receive_from_socket(int socketFd,struct msg_list* test, char stopat);
+char* receive_from_socket(int socketFd, char direction, int* msgLen);
 
-int process_list(struct msg_list* pList, char direction, char** pMsg, char** pDest);
+int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction);
 
-int get_list_len(struct msg_list* pList);
+char* get_line_from_buffer(char* pMsg, int* maxLen, int* lineLen);
 
-int get_line_from_list(struct msg_list** pList, char** pLine);
-
-void clear_list(struct msg_list** pList);
+int get_header_len(char *pMsg,int* msgLen);
 
 int main(int argc)
 {
@@ -254,9 +250,6 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
     // Destination URL pointer
     char*    pDest;
 
-    struct msg_list* pRecList;
-    struct msg_list* pRecList2;
-
     // Message buffer pointer
     char* 	pMsg;
     int 	msgLen;
@@ -265,41 +258,44 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
     // TODO: End when final respons is sent (think keep-alive);
     while(1)
     {
+        printf("waiting for new..\n");
 
+        msgLen = 0;
 
         // Read from socket (non blocking)
-        pRecList = receive_from_socket(incClientFd,pRecList,STOPATBLOCKING);
+        pMsg = receive_from_socket(incClientFd, OUTGOING, &msgLen);
 #ifdef DEBUG
-        printf("server side: received msg\n");
+        printf("server side: received msg with length: %u\n", msgLen);
 #endif
-
-
         // If recLen is zero, the client closed the connection, end!
-        if(!pRecList)
+        if(!msgLen)
         {
 #ifdef DEBUG
-        printf("server side: incomming socket closed.\n");
+            printf("server side: incomming socket closed.\n");
 #endif
             break;
         }
 
-        // Process the list and create a char string msg
-        int status = process_list(pRecList, OUTGOING, &pMsg, &pDest);
+        printf("process shoit %u\n", pMsg);
+        int status;
+        if(pMsg)
+            status = process_msg(&pMsg,&msgLen,&pDest,OUTGOING);
 
+
+        pMsg[msgLen] = '\0';
+        printf("Test: len %u, message\n %s\n",msgLen,pMsg);
 
 #ifdef DEBUG
-        printf("server side: processed msg, status %u\n", status);
+        //   printf("server side: processed msg, status %u, length %u\n", status, msgLen);
 #endif
-        //Length of msg
-        msgLen = strlen(pMsg);
+
 
         //If not a redirect, procceed
         if(status == 0)
         {
 
 #ifdef DEBUG
-            pMsg[msgLen] = '\0';
-            printf("server side:\n%s received msg:\n'%s'\n",incClient,pMsg);
+          //  printf("server side:\n%s received msg:\n'%s'\n",incClient,pMsg);
 #endif
 
             //Open socket to the destination
@@ -308,44 +304,50 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
             //If we managed to open the socket, write the modified message to the destination
             if(destFd != -1)
             {
-                //Number of bytes sent
-                int sentLend = 0;
-                //Write request to destination (send until we have sent sendLen number o f bytess)
-                while(sentLend != msgLen)
+
+                if(pMsg)
                 {
-                    if((sentLend += send(destFd, pMsg, msgLen, 0)) == -1)
+                    //Number of bytes sent
+                    int sentLend = 0;
+                    //Write request to destination (send until we have sent sendLen number o f bytess)
+                    while(sentLend != msgLen)
                     {
-                        perror("client side: Error sending to destination");
+                        if((sentLend += send(destFd, pMsg, msgLen, 0)) == -1)
+                        {
+                            perror("client side: Error sending to destination");
+                        }
                     }
                 }
 
+
                 //Free pMsg and pDest
                 if(pMsg)
-                    free(pMsg);
-                if(pDest)
-                    free(pDest);
-
-                // Clean list if any trash is remaining
-               // if(pRecList)
-                //    clear_list(&pRecList);
-
-                // Read from socket (non blocking)
-                pRecList = receive_from_socket(destFd,pRecList,STOPATCLOSE);
-
-                // Process the list and create a char string msg
-                int status = process_list(pRecList, INCOMMING, &pMsg, &pDest);
-
-                //Length of msg
-                msgLen = strlen(pMsg);
-#ifdef DEBUG
-                pMsg[msgLen] = '\0';
-                if(status == 1)
                 {
-                    printf("client side:\n%s Received a bad message, returning 'redirect message':\n'%s'\n",destClient,pMsg);
+                    free(pMsg);
+                    pMsg = NULL;
+                }
+                if(pDest)
+                {
+                    free(pDest);
+                    pDest = NULL;
+                }
+
+                msgLen = 0;
+                // Read from socket (non blocking)
+                pMsg = receive_from_socket(destFd, INCOMMING, &msgLen);
+
+                int status;
+                if(pMsg)
+                    status = process_msg(&pMsg,&msgLen,&pDest,INCOMMING);
+
+ #ifdef DEBUG
+                if(0 == 1)
+                {
+                    printf("client side:\n%s Received a bad message, returning 'redirect message':\n''\n",destClient,pMsg);
                 }
                 else
                 {
-                    printf("client side:\n%s Received message:\n'%s'\n",destClient,pMsg);
+                    //printf("client side:\n%s Received message:\n'%s'\n",destClient,pMsg);
                 }
 #endif
             }
@@ -354,15 +356,17 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
 #ifdef DEBUG
             else
             {
-                pMsg[strlen(pMsg)] = '\0';
-                printf("server side:\n%s Received a bad message, returning 'redirect message':\n'%s'\n",destClient,pMsg);
+              //  printf("server side:\n%s Received a bad message, returning 'redirect message':\n'%s'\n",destClient,pMsg);
             }
 #else
         }
 #endif
-
+            }
+        if(pMsg)
+        {
             int sentLend = 0;
-
+            // msgLen = strlen(pMsg);
+              printf("sending n: %u bytes\n",msgLen);
             //Write request to destination (send until we have sent sendLen number o f bytess)
             while(sentLend != msgLen)
             {
@@ -371,21 +375,21 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                     perror("client side: Error sending to destination");
                 }
             }
-
-            printf("time to free shit\n");
-
-            //Free anything that might be remaining before moving on
-            if(pMsg)
-                free(pMsg);
-            if(pDest)
-                free(pDest);
-           // if(pRecList)
-             //   clear_list(&pRecList);
-
-
-            printf("shit freed\n");
-
         }
+
+        //Free anything that might be remaining before moving on
+        //Free pMsg and pDest
+        if(pMsg)
+        {
+            free(pMsg);
+            pMsg = NULL;
+        }
+        if(pDest)
+        {
+            free(pDest);
+            pDest = NULL;
+        }
+
 
     }
 }
@@ -454,85 +458,106 @@ int dest_connect(char dest[], char destClient[INET6_ADDRSTRLEN])
     return destFd;
 }
 
-struct msg_list* receive_from_socket(int socketFd, struct msg_list* test, char stopat)
+char* receive_from_socket(int socketFd, char direction, int* msgLen)
 {
-    //Set flags to be non blocking (receiving from client) or blocking (receiving from destination)
-    char flags;
-    if(stopat == STOPATCLOSE)
-        flags = 0;
-    else
-        flags = MSG_DONTWAIT;
 
-    //Allocate first list entity
+    //Allocate reclist entity
     struct msg_list* pRecList = (struct msg_list*) malloc(sizeof(struct msg_list));
-    //Point to null as next
-    pRecList->next = NULL;
-    pRecList->dataLen = 0;
-
     struct msg_list* pCurListSeg = pRecList;
 
-    int recLen;
+    //Point to null as next
+    pCurListSeg->next = NULL;
+    pCurListSeg->dataLen = 0;
+
+    int recLen = 0;
+    int tmpLen = 0;
     int bufLen = MSGLISTSIZE;
 
+    char tmpBuf[MSGLISTSIZE];
+
     //Read out at most MSGLISTSIZE from socket (first call blocking as we might wait for a request)
-    recLen = recv(socketFd, &pCurListSeg->data[MSGLISTSIZE-bufLen], bufLen, 0);
 
-    if(recLen == 0)
+    tmpLen = recv(socketFd, tmpBuf, bufLen, 0);
+
+    memcpy(pCurListSeg->data,tmpBuf,tmpLen);
+
+    if(tmpLen == 0)
         return NULL;
-
-    printf("got first msg %u\n",recLen);
 
     do
     {
 
-        //If we are not reading in "unblocked" mode, break right away when we recLen = 0;
-        if(!stopat && (recLen == 0))
+        recLen += tmpLen;
+
+        //We continue to read
+        pCurListSeg->dataLen += tmpLen;
+
+        int dataLen = pCurListSeg->dataLen;
+        //Check for double termination
+        if((direction == OUTGOING) && (pCurListSeg->data[dataLen-4] == '\r') &&
+                (pCurListSeg->data[dataLen-3] == '\n') &&
+                (pCurListSeg->data[dataLen-2] == '\r') &&
+                (pCurListSeg->data[dataLen-1] == '\n'))
             break;
 
+        //If we haev filled this segment, allocate a new one
+        if(pCurListSeg->dataLen == MSGLISTSIZE)
+        {
+            //Allocate new list segment
+            struct msg_list* pNewSeg = (struct msg_list*) malloc(sizeof(struct msg_list));
+            //Point to next previus segment
+            pNewSeg->next = NULL;
+            pNewSeg->dataLen = 0;
+            //Change pRecList header
+            pCurListSeg->next = pNewSeg;
+            pCurListSeg = pNewSeg;
 
-         printf("got second msg %u, bufLen: %u dataLen: %u\n",recLen, bufLen,pRecList->dataLen);
-            //We continue to read
-            pCurListSeg->dataLen += recLen;
-
-            //If we haev filled this segment, allocate a new one
-            if(pCurListSeg->dataLen == MSGLISTSIZE)
-            {
-                //Allocate new list segment
-                struct msg_list* pNewSeg = (struct msg_list*) malloc(sizeof(struct msg_list));
-                //Point to next previus segment
-                pNewSeg->next = NULL;
-                pNewSeg->dataLen = 0;
-                //Change pRecList header
-                pCurListSeg->next = pNewSeg;
-                pCurListSeg = pNewSeg;
-
-                bufLen = MSGLISTSIZE;
-            }
-            else
-            {
-                bufLen -= recLen;
-            }
+            bufLen = MSGLISTSIZE;
+        }
+        else
+        {
+            bufLen -= tmpLen;
+        }
 
 
         //Read out at most MSGLISTSIZE from socket (non blocking)
-        recLen = recv(socketFd, &pCurListSeg->data[MSGLISTSIZE-bufLen], bufLen, flags);
+        tmpLen = recv(socketFd, tmpBuf, bufLen, 0);
 
-        if(!flags && (recLen == 0))
+        memcpy(&pCurListSeg->data[MSGLISTSIZE-bufLen],tmpBuf,tmpLen);
+
+        //If we are not reading in "unblocked" mode, break right away when we recLen = 0;
+        if(tmpLen == 0)
             break;
-
-        //If recList returns "EAGAIN" or "EWOULDBLOCK" we stop reading (this is only true if stopat is set)
-        if((recLen == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
-        {
-            break;
-        }
-
 
     }
     while(1);
 
-    test = pRecList;
+    //Message received, make it linear bitch!
+    char* pMsg = (char *) malloc(recLen);
+    pCurListSeg = pRecList;
+
+    //Copy over to line buffer
+    int i;
+    int segI = 0;
+    for(i = 0; i < recLen; i++)
+    {
+        pMsg[i] = pCurListSeg->data[segI];
+
+        segI++;
+
+        if(segI == pCurListSeg->dataLen)
+        {
+            struct msg_list* tmp = pCurListSeg;
+            pCurListSeg = pCurListSeg->next;
+            free(tmp);
+            segI = 0;
+        }
+    }
+
+    *msgLen = recLen;
+
     //Return pointer
-    return pRecList;
+    return pMsg;
 }
 
 /*
@@ -541,22 +566,37 @@ struct msg_list* receive_from_socket(int socketFd, struct msg_list* test, char s
 	If returned with status 0, the message can go forward as planned.
 	If returned with status 1, we have a redirect message due to "bad" request
 */
-int process_list(struct msg_list* pList, char direction, char** pMsgInc, char** pDestInc)
+
+bool test = false;
+
+int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
 {
 
+    /*
+    	First we need to get the total message length to allocate a appropriate char string.
+    	We add 5 bytes to the length to make room for a possible modification of the connection type (+1 for null termination for printf purposes).
+    */
+    //printf("messagelenght: %u\n", *msgLen);
+    char*   pNewMsg			= (char *) malloc(*msgLen + 6);
+    int     newMsgLen       = 0;
+    char*   pDest           = NULL;
+    char*   pLine           = NULL;
+    int     lineLen         = 0;
+    char**  header          = NULL;
+
     //Reg. Exp. for detecting "bad" words as well as "Host", "Connection" and "Length" lines in HTTP header
-    regex_t regBW, regHost, regCon, regCont, regType;
+    regex_t regBW, regHost, regCon, regConTest, regCont, regType;
     int retv;
 
-    if((retv = regcomp(&regType, "Content-Type.* text.html|text.xml", REG_ICASE|REG_EXTENDED)))
+    if((retv = regcomp(&regType, "[C|c]ontent.[T|t]ype.* text", REG_ICASE|REG_EXTENDED)))
     {
         printf("Reg exp comp. fail\n");
     }
-    if((retv = regcomp(&regBW, "norrkoping|aftonbladet", REG_ICASE|REG_EXTENDED))) //.*
+    if((retv = regcomp(&regBW, "norrk.ping|aftonbladet|SpongeBob|(Britney Spears)|(Paris Hilton)", REG_ICASE|REG_EXTENDED)))
     {
         printf("Reg exp comp. fail\n");
     }
-    if((retv = regcomp(&regHost, "^Host. ", REG_ICASE|REG_EXTENDED)))
+    if((retv = regcomp(&regHost, "Host. ", REG_ICASE|REG_EXTENDED)))
     {
         printf("Reg exp comp. fail\n");
     }
@@ -564,46 +604,36 @@ int process_list(struct msg_list* pList, char direction, char** pMsgInc, char** 
     {
         printf("Reg exp comp. fail\n");
     }
-    if((retv = regcomp(&regCont, "Content-Type.*", REG_ICASE|REG_EXTENDED)))
+    if((retv = regcomp(&regConTest, "Connection. ", REG_ICASE|REG_EXTENDED)))
     {
         printf("Reg exp comp. fail\n");
     }
-
-    /*
-    	First we need to get the total message length to allocate a appropriate char string.
-    	We add 5 bytes to the length to make room for a possible modification of the connection type (+1 for null termination for printf purposes).
-    */
-
-    int		listLen			= get_list_len(pList);
-    char*   pMsg			= (char *) malloc(listLen + 6);
-    char*   pDest           = NULL;
-    // Length of the processed message
-    int 	msgLen  		= 0;
-
-    int 	lineLen 		= 0;
-    char* 	pLine			= NULL;
+    if((retv = regcomp(&regCont, "[C|c]ontent.[T|t]ype", REG_ICASE|REG_EXTENDED)))
+    {
+        printf("Reg exp comp. fail\n");
+    }
 
     bool 	hostFound 		= false;
     bool 	conFound		= false;
 
     //The message content is considered being text until proven otherwise
     bool	textType		= true;
+    int headerLen           = 0;
 
 
-    //Read out first line
-    lineLen = get_line_from_list(&pList, &pLine);
-
-
-
-
-    //Read out lines from list until -1 is returned.
-    while(lineLen != -1)
+    do
     {
+        printf("get line %u %u\n",*msgLen,*pMsg);
+        //Read out line from msg buffer to be processed
+        pLine = get_line_from_buffer(*pMsg,msgLen,&lineLen);
+
+        printf("line gotten\n");
+
+        if(lineLen == 0)
+            break;
 
         int match;
-        //printf("Read line from list: %s\n",pLine);
-/*
-        //Check if the line contains the type of the content, and if the type is text type (if incomming)
+
         if((direction == INCOMMING) && !(match = regexec(&regCont, pLine, 0, NULL, 0)))
         {
 
@@ -614,42 +644,40 @@ int process_list(struct msg_list* pList, char direction, char** pMsgInc, char** 
             }
         }
 
-
-        //Start with checking for "bad" words (only as long as we think the contents is textType)
-        if(textType && !(match = regexec(&regBW, pLine, sizeof(pLine), NULL, 0)))
+        if((direction == OUTGOING) && !(match = regexec(&regBW, pLine, 0, NULL, 0)))
         {
-
+            printf("bad word\n");
             //A "bad" request detected, create a redirect message and send back to the client.
-            if(pMsg)
-                free(pMsg);
+            if(pNewMsg)
+                free(pNewMsg);
+            if(*pMsg)
+                free(*pMsg);
 
+            pNewMsg = (char *) malloc(REDIRECTLEN);
+            memcpy(pNewMsg, REDIRECTHEADER, REDIRECTLEN);
 
-            pMsg = (char *) malloc(REDIRECTLEN);
-            memcpy(pMsg, REDIRECTHEADER, REDIRECTLEN);
-
-            *pMsgInc = pMsg;
-
+            *msgLen = REDIRECTLEN;
+            *pMsg = pNewMsg;
+            printf("redirect\n");
             //Return with status 1
             return 1;
-
         }
         //Check if it is the "Host" line (only if it is an outgoing request and we have not yet found the host information)
-        else
-        */
-        if((direction == OUTGOING) && !hostFound && !(match = regexec(&regHost, pLine, 0, NULL, 0)))
+        else if((direction == OUTGOING) && !hostFound && !(match = regexec(&regHost, pLine, 0, NULL, 0)))
         {
 
-            //Allocate the destination, length lineLen - 7 (Leading characters) + 1 (Null termination)
-            pDest = (char *) malloc(lineLen + 6);
+            //Allocate the destination, length lineLen -  8(Leading characters) + 1 (Null termination)
+            pDest = (char *) malloc(lineLen - 7);
 
             //Extract host URL/destination (do not copy \r\n)
             memcpy(pDest,&pLine[6],lineLen-8);
             //Null terminate the "dest" string
-            pDest[lineLen-7] = '\0';
+            pDest[lineLen-8] = '\0';
+            *pDestInc = pDest;
 
             //Write to msg
-            memcpy(&pMsg[msgLen],pLine,lineLen);
-            msgLen += lineLen;
+            memcpy(&pNewMsg[newMsgLen],pLine,lineLen);
+            newMsgLen += lineLen;
 
 #ifdef DEBUG
             printf("Host line found in message: %s\n", pDest);
@@ -658,191 +686,157 @@ int process_list(struct msg_list* pList, char direction, char** pMsgInc, char** 
             hostFound = true;
         }
         //Check if it is the "Connection" line
-        else if(!conFound && !(match = regexec(&regCon, pLine, 0, NULL, 0)))
+        else if((direction == OUTGOING) && !conFound && !(match = regexec(&regConTest, pLine, 0, NULL, 0)))
         {
 
             //Set "Connection: close" if outgoing message
             if(direction == OUTGOING)
             {
-                memcpy(&pMsg[msgLen],"Connection: close\r\n",19);
-                msgLen += 19;
+                if(!(match = regexec(&regCon, pLine, 0, NULL, 0)))
+                {
+                    memcpy(&pNewMsg[newMsgLen],"Connection: close\r\n",19);
+                    newMsgLen += 19;
+                    test = true;
+                }
+                else
+                {
+                    memcpy(&pNewMsg[newMsgLen],pLine,lineLen);
+                    newMsgLen += lineLen;
+                }
             }
             else if(direction == INCOMMING)
             {
-                //Set "Connection: keep-alive" if incomming
-                memcpy(&pMsg[msgLen],"Connection: keep-alive\r\n",24);
-                msgLen += 24;
+                if(test)
+                {
+                    //Set "Connection: keep-alive" if incomming
+                    memcpy(&pNewMsg[newMsgLen],"Connection: keep-alive\r\n",24);
+                    newMsgLen += 24;
+                }
+                else
+                {
+                    memcpy(&pNewMsg[newMsgLen],pLine,lineLen);
+                    newMsgLen += lineLen;
+                }
+
+
             }
 
 #ifdef DEBUG
-            printf("Connection line found in message: %s\n", pLine);
+            printf("Connection line found in message\n");
 #endif
         }
         else
         {
-
             //Nothing special, just copy line to msg buffer
-            memcpy(&pMsg[msgLen],pLine,lineLen);
-            msgLen += lineLen;
+            memcpy(&pNewMsg[newMsgLen],pLine,lineLen);
+            newMsgLen += lineLen;
         }
 
-
-        //Free current allocated line before we move on
-        if(pLine)
+        if((direction == INCOMMING) && (lineLen == 2) && (strcmp(pLine,"\r\n") == 0))
         {
-            free(pLine);
+            if(textType)
+            {
+                if(!(match = regexec(&regBW, *pMsg, 0, NULL, 0)))
+                {
+                    printf("bad word\n");
+                    //A "bad" request detected, create a redirect message and send back to the client.
+                    if(pNewMsg)
+                        free(pNewMsg);
+                    if(*pMsg)
+                        free(*pMsg);
+
+                    pNewMsg = (char *) malloc(REDIRECTLEN);
+                    memcpy(pNewMsg, REDIRECTHEADER, REDIRECTLEN);
+
+                    *msgLen = REDIRECTLEN;
+                    *pMsg = pNewMsg;
+                    printf("redirect\n");
+                    //Return with status 1
+                    return 1;
+                }
+                else
+                {
+                                free(pLine);
+                memcpy(&pNewMsg[newMsgLen],*pMsg,*msgLen);
+                newMsgLen += *msgLen;
+                break;
+                }
+            }
+            else
+            {
+                free(pLine);
+                memcpy(&pNewMsg[newMsgLen],*pMsg,*msgLen);
+                newMsgLen += *msgLen;
+                break;
+            }
+
         }
 
-        //Read out next line from buffer
-        lineLen = get_line_from_list(&pList, &pLine);
+        if(pLine)
+            free(pLine);
 
     }
+    while(1);
 
+    printf("done\n");
+
+    *msgLen = newMsgLen;
+    free(*pMsg);
+    *pMsg = pNewMsg;
 
     // Free regexs
     regfree(&regBW);
     regfree(&regCon);
+    regfree(&regConTest);
     regfree(&regCont);
     regfree(&regType);
     regfree(&regHost);
-
-    *pMsgInc = pMsg;
-    *pDestInc = pDest;
 
     //If we reach here, we can continue on with sending the message
     return 0;
 }
 
-/*
-	Calcualte and return the length of the received message
-*/
-int get_list_len(struct msg_list* pList)
-{
-    int len = 0;
-
-    while(pList != NULL)
-    {
-
-        len += pList->dataLen;
-
-        if(pList->next)
-            pList = pList->next;
-        else
-            break;
-    }
-
-    return len;
-}
 
 /*
-	Read out line from list buffer
+	Read out line from buffer
 */
-int get_line_from_list(struct msg_list** pList, char** pLine)
+char* get_line_from_buffer(char* pMsg, int* maxLen, int* lineLen)
 {
 
-    // Search for long the next line is the list is
-    int i = 0;
-    // How far we are in the line segment data buffer
-    int segI = 0;
-
-    struct msg_list* pCurListSeg = *pList;
-
-    if(pCurListSeg == NULL)
-        return -1;
-
-    do
+    //Count how long the line is
+    if(*maxLen > 0)
     {
-        if(pCurListSeg->data[segI] == '\n')
+        int i = 1;
+        while(i < *maxLen)
         {
+            if(pMsg[i] == '\n')
+                break;
+
             i++;
-            segI++;
-            break;
         }
 
         i++;
-        segI++;
+        //Extract the line
+        char* tmp;
 
-        // If we reached end of this segment, move on to next
-        if(pCurListSeg->dataLen == segI)
-        {
+        tmp = (char *) malloc(i+1);
+        memcpy(tmp,pMsg,i);
+
+#ifdef DEBUG
+        tmp[i] = '\0';
+        //printf("Line found: %s\n",tmp);
+#endif
 
 
-                pCurListSeg = pCurListSeg->next;
+        //Remove extracted data from message
+        memmove(pMsg,&pMsg[i],*maxLen-i);
+        *maxLen -= i;
 
+        *lineLen = i;
 
-            segI = 0;
-
-        }
-
+        return tmp;
     }
-    while(pCurListSeg);
-    // Add one for "correct" length
-    //i++;
+    *lineLen = 0;
+    return NULL;
 
-
-    // Nothing to extract.. This is worsthless as it is now..
-    if(i == 0)
-        return -1;
-
-    // Allocate the line
-    *pLine = (char *) malloc(i+1);
-
-    pCurListSeg = *pList;
-
-    // Read out the line from the list
-    int j, segJ;
-    for(j = 0; j < i; j++)
-    {
-        char* tmp = *(pLine);
-
-        tmp[j] = pCurListSeg->data[segJ];
-
-        segJ++;
-
-
-        if(segJ == pCurListSeg->dataLen)
-        {
-            //Free used segment
-            struct msg_list* pTmp = pCurListSeg;
-            pCurListSeg = pCurListSeg->next;
-
-            if(pTmp)
-                free(pTmp);
-            segJ = 0;
-
-        }
-
-    }
-
-    char* tmp = *(pLine);
-    tmp[j] = '\0';
-
-    if(pCurListSeg)
-    {
-        pCurListSeg->dataLen -= segJ;
-
-        // Shift list buffet to remove the line
-        memmove(pCurListSeg->data,&pCurListSeg->data[segJ],MSGLISTSIZE-segJ);
-
-    }
-
-    *pList = pCurListSeg;
-
-    return i;
-}
-
-void clear_list(struct msg_list** pList)
-{
-    struct msg_list* pListT = *pList;
-    struct msg_list* pTmp;
-
-    while(pListT)
-    {
-        pTmp = pListT;
-        pListT  = pListT->next;
-        if(pTmp)
-            free(pTmp);
-    }
-
-    *pList = pListT;
 }
