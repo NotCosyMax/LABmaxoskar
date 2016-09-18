@@ -329,19 +329,7 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
         // Process the incomming message. Check for "bad words", extract destination host and change connection type to close if needed.
         int status;
         if(pMsg)
-<<<<<<< HEAD
             status = process_msg(&pMsg,&msgLen,&pDest,OUTGOING,&modCon);
-=======
-            status = process_msg(&pMsg,&msgLen,&pDest,OUTGOING);
-
-
-        pMsg[msgLen] = '\0';
-<<<<<<< HEAD
-     //   printf("Test: len %u, message\n %s\n",msgLen,pMsg);
-=======
-        printf("Test: len %u, message\n %s\n",msgLen,pMsg);
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
 #ifdef DEBUG
         pMsg[msgLen] = '\0';
@@ -401,11 +389,7 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                 pMsg[msgLen] = '\0';
                 if(status == 1)
                 {
-<<<<<<< HEAD
-                    //printf("client side:\n%s Received a bad message, returning 'redirect message':\n''\n",destClient,pMsg);
-=======
                     printf("client side:\n%s Received a bad message, returning 'redirect message':\n''\n",destClient,pMsg);
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
                 }
                 else
                 {
@@ -433,7 +417,6 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                     }
                 }
             }
-<<<<<<< HEAD
 
             //Free anything that might be remaining before moving on
             if(pMsg)
@@ -441,26 +424,6 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
                 free(pMsg);
                 pMsg = NULL;
             }
-=======
-        }
-
-        //Free anything that might be remaining before moving on
-        //Free pMsg and pDest
-        if(pMsg)
-        {
-            free(pMsg);
-            pMsg = NULL;
-        }
-<<<<<<< HEAD
-=======
-        if(pDest)
-        {
-            free(pDest);
-            pDest = NULL;
-        }
-
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
         }
     }
@@ -532,15 +495,9 @@ void inc_client_handler(int incClientFd, char incClient[INET6_ADDRSTRLEN])
             // Copy the read data into the list
             memcpy(&pCurListSeg->data[MSGLISTSIZE-bufLen],tmpBuf,tmpLen);
 
-<<<<<<< HEAD
             // If tmpLen is zero, the connection is closed. Break!
             if(tmpLen == 0)
                 break;
-=======
-char* receive_from_socket(int socketFd, char direction, int* msgLen)
-<<<<<<< HEAD
-{
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
         }
         while(tmpLen > 0);
@@ -624,232 +581,22 @@ char* receive_from_socket(int socketFd, char direction, int* msgLen)
         {
             printf("Reg exp comp. fail\n");
         }
-<<<<<<< HEAD
-=======
-    }
-
-    *msgLen = recLen;
-
-    //Return pointer
-    return pMsg;
-}
-
-/*
-	Processes the list content line by line and serializes the line to a processes char string.
-	The processed char string is either a modified "good" message, or a redirect message.
-	If returned with status 0, the message can go forward as planned.
-	If returned with status 1, we have a redirect message due to "bad" request
-*/
-
-bool test = false;
-
-int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
-{
-
-=======
-{
-
-    //Allocate reclist entity
-    struct msg_list* pRecList = (struct msg_list*) malloc(sizeof(struct msg_list));
-    struct msg_list* pCurListSeg = pRecList;
-
-    //Point to null as next
-    pCurListSeg->next = NULL;
-    pCurListSeg->dataLen = 0;
-
-    int recLen = 0;
-    int tmpLen = 0;
-    int bufLen = MSGLISTSIZE;
-
-    char tmpBuf[MSGLISTSIZE];
-
-    //Read out at most MSGLISTSIZE from socket (first call blocking as we might wait for a request)
-
-    tmpLen = recv(socketFd, tmpBuf, bufLen, 0);
-
-    memcpy(pCurListSeg->data,tmpBuf,tmpLen);
-
-    if(tmpLen == 0)
-        return NULL;
-
-    do
-    {
-
-        recLen += tmpLen;
-
-        //We continue to read
-        pCurListSeg->dataLen += tmpLen;
-
-        int dataLen = pCurListSeg->dataLen;
-        //Check for double termination
-        if((direction == OUTGOING) && (pCurListSeg->data[dataLen-4] == '\r') &&
-                (pCurListSeg->data[dataLen-3] == '\n') &&
-                (pCurListSeg->data[dataLen-2] == '\r') &&
-                (pCurListSeg->data[dataLen-1] == '\n'))
-            break;
-
-        //If we haev filled this segment, allocate a new one
-        if(pCurListSeg->dataLen == MSGLISTSIZE)
-        {
-            //Allocate new list segment
-            struct msg_list* pNewSeg = (struct msg_list*) malloc(sizeof(struct msg_list));
-            //Point to next previus segment
-            pNewSeg->next = NULL;
-            pNewSeg->dataLen = 0;
-            //Change pRecList header
-            pCurListSeg->next = pNewSeg;
-            pCurListSeg = pNewSeg;
-
-            bufLen = MSGLISTSIZE;
-        }
-        else
-        {
-            bufLen -= tmpLen;
-        }
-
-
-        //Read out at most MSGLISTSIZE from socket (non blocking)
-        tmpLen = recv(socketFd, tmpBuf, bufLen, 0);
-
-        memcpy(&pCurListSeg->data[MSGLISTSIZE-bufLen],tmpBuf,tmpLen);
-
-        //If we are not reading in "unblocked" mode, break right away when we recLen = 0;
-        if(tmpLen == 0)
-            break;
-
-    }
-    while(1);
-
-    //Message received, make it linear bitch!
-    char* pMsg = (char *) malloc(recLen);
-    pCurListSeg = pRecList;
-
-    //Copy over to line buffer
-    int i;
-    int segI = 0;
-    for(i = 0; i < recLen; i++)
-    {
-        pMsg[i] = pCurListSeg->data[segI];
-
-        segI++;
-
-        if(segI == pCurListSeg->dataLen)
-        {
-            struct msg_list* tmp = pCurListSeg;
-            pCurListSeg = pCurListSeg->next;
-            free(tmp);
-            segI = 0;
-        }
-    }
-
-    *msgLen = recLen;
-
-    //Return pointer
-    return pMsg;
-}
-
-/*
-	Processes the list content line by line and serializes the line to a processes char string.
-	The processed char string is either a modified "good" message, or a redirect message.
-	If returned with status 0, the message can go forward as planned.
-	If returned with status 1, we have a redirect message due to "bad" request
-*/
-
-bool test = false;
-
-int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
-{
-
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
-    /*
-    	First we need to get the total message length to allocate a appropriate char string.
-    	We add 5 bytes to the length to make room for a possible modification of the connection type (+1 for null termination for printf purposes).
-    */
-    //printf("messagelenght: %u\n", *msgLen);
-    char*   pNewMsg			= (char *) malloc(*msgLen + 6);
-    int     newMsgLen       = 0;
-    char*   pDest           = NULL;
-    char*   pLine           = NULL;
-    int     lineLen         = 0;
-    char**  header          = NULL;
-
-    //Reg. Exp. for detecting "bad" words as well as "Host", "Connection" and "Length" lines in HTTP header
-    regex_t regBW, regHost, regCon, regConTest, regCont, regType;
-    int retv;
-
-    if((retv = regcomp(&regType, "[C|c]ontent.[T|t]ype.* text", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-<<<<<<< HEAD
-    if((retv = regcomp(&regBW, "[N|n]orrk.*ping|aftonbladet|[S|s]ponge[B|b]ob|(Britney Spears)|(Paris Hilton)", REG_ICASE|REG_EXTENDED)))
-=======
-    if((retv = regcomp(&regBW, "norrk.ping|aftonbladet|SpongeBob|(Britney Spears)|(Paris Hilton)", REG_ICASE|REG_EXTENDED)))
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regHost, "Host. ", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regCon, "Connection. [K|k]eep.[A|a]live", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regConTest, "Connection. ", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-    if((retv = regcomp(&regCont, "[C|c]ontent.[T|t]ype", REG_ICASE|REG_EXTENDED)))
-    {
-        printf("Reg exp comp. fail\n");
-    }
-
-    bool 	hostFound 		= false;
-    bool 	conFound		= false;
-
-    //The message content is considered being text until proven otherwise
-    bool	textType		= true;
-    int headerLen           = 0;
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
         // Have a specific line been found?
         bool 	hostFound 		= false;
         bool 	conFound		= false;
 
-<<<<<<< HEAD
         // The message content is considered being text until proven otherwise
         bool	textType		= true;
-=======
-    do
-    {
-<<<<<<< HEAD
-        regmatch_t matchE;
-
-        //Read out line from msg buffer to be processed
-        pLine = get_line_from_buffer(*pMsg,msgLen,&lineLen);
-
-=======
-        printf("get line %u %u\n",*msgLen,*pMsg);
-        //Read out line from msg buffer to be processed
-        pLine = get_line_from_buffer(*pMsg,msgLen,&lineLen);
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
         do
         {
             // Read out line from msg buffer to be processed
             pLine = get_line_from_buffer(*pMsg,msgLen,&lineLen);
 
-<<<<<<< HEAD
             // If lineLen is zero, there is no more to read from the msg
             if(lineLen == 0)
                 break;
-=======
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
-        if(lineLen == 0)
-            break;
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
             // Check the type if the content. If we have already discovered it is not text, we don't need to check.
             if(textType && (direction == INCOMMING) && !(regexec(&regCont, pLine, 0, NULL, 0)))
@@ -866,7 +613,6 @@ int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
             if((direction == OUTGOING) && !(regexec(&regBW, pLine, 0, NULL, 0)))
             {
 
-<<<<<<< HEAD
                 printf("BAD KEYWORD FOUND! EXECUTING COUNTERMEASURES TO PREVENT BRAIN DECAY!\n");
 
                 // A "bad" request detected, create a redirect message and send back to the client.
@@ -888,34 +634,6 @@ int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
             // Check if it is the "Host" line (only if it is an outgoing request and we have not yet found the host information)
             else if((direction == OUTGOING) && !hostFound && !(regexec(&regHost, pLine, 0, NULL, 0)))
             {
-=======
-        if((direction == OUTGOING) && !(match = regexec(&regBW, pLine, 0, NULL, 0)))
-        {
-            printf("bad word\n");
-<<<<<<< HEAD
-
-
-=======
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
-            //A "bad" request detected, create a redirect message and send back to the client.
-            if(pNewMsg)
-                free(pNewMsg);
-            if(*pMsg)
-                free(*pMsg);
-
-            pNewMsg = (char *) malloc(REDIRECTLEN);
-            memcpy(pNewMsg, REDIRECTHEADER, REDIRECTLEN);
-
-            *msgLen = REDIRECTLEN;
-            *pMsg = pNewMsg;
-            printf("redirect\n");
-            //Return with status 1
-            return 1;
-        }
-        //Check if it is the "Host" line (only if it is an outgoing request and we have not yet found the host information)
-        else if((direction == OUTGOING) && !hostFound && !(match = regexec(&regHost, pLine, 0, NULL, 0)))
-        {
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
 
                 // Allocate the destination, length lineLen -  8(Leading characters) + 1 (Null termination)
                 pDest = (char *) malloc(lineLen - 7);
@@ -995,7 +713,6 @@ int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
 
                 if(textType)
                 {
-<<<<<<< HEAD
                     // Content is text type, check for "bad" words
                     if(!(regexec(&regBW, *pMsg, 0, NULL, 0)))
                     {
@@ -1030,29 +747,6 @@ int process_msg(char** pMsg, int* msgLen, char** pDestInc, char direction)
                         break;
 
                     }
-=======
-                    printf("bad word\n");
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> c1cbc448c6b62317a102dfb543ce1039b0fdca21
-                    //A "bad" request detected, create a redirect message and send back to the client.
-                    if(pNewMsg)
-                        free(pNewMsg);
-                    if(*pMsg)
-                        free(*pMsg);
-
-                    pNewMsg = (char *) malloc(REDIRECTLEN);
-                    memcpy(pNewMsg, REDIRECTHEADER, REDIRECTLEN);
-
-                    *msgLen = REDIRECTLEN;
-                    *pMsg = pNewMsg;
-                    printf("redirect\n");
-                    //Return with status 1
-                    return 1;
->>>>>>> d1388be3fdd9df76c741c32f6cc01ba3aee26b92
                 }
                 // Content is not text, copy everything and break
                 else
